@@ -24,16 +24,18 @@ void recvMsg(uint8_t *data, size_t len){
 }
 
 void webSerialSetup() {        
-    // WebSerial is accessible at "192.168.0.18/webserial" in browser
-    WebSerial.begin(&server);
-    WebSerial.msgCallback(recvMsg);
-    server.begin();   
+  // WebSerial is accessible at "192.168.0.18/webserial" in browser
+  WebSerial.begin(&server);
+  WebSerial.msgCallback(recvMsg);
+  server.begin();   
 }
 
-void webSerialLoop() {
+void printWebSerialIP() {
+  EVERY_N_SECONDS(5) {
     WebSerial.print(F("IP address: "));
     WebSerial.println(WiFi.localIP());
     Serial.println(WiFi.localIP());
+  }
 }
 
 void onOTAStart() {

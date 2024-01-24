@@ -23,28 +23,26 @@ void setup() {
 
   fill_solid(leds, NUM_LEDS, color);
   FastLED.show();
+  
+}
 
-  digitalWrite(LED_RED, LOW); //red
-  digitalWrite(LED_GREEN, LOW); //green
-  digitalWrite(LED_BLUE, LOW); //blue
+void lightTheOnboardLED() {
+  // digitalWrite(LED_RED, LOW); //red
+  // digitalWrite(LED_GREEN, LOW); //green
+  // digitalWrite(LED_BLUE, LOW); //blue
 }
 
 void loop() {
-  static uint8_t hue_i = 0;
-
   ElegantOTA.loop();  // Required for OTA update
-
-  EVERY_N_SECONDS(5) {
-    WebSerial.println(millis() / 1000);
-    webSerialLoop();
-  }
-
-  fill_rainbow_circular(leds, NUM_LEDS, hue_i);k
+  
+  static uint8_t hue_i = 0;
+  fill_rainbow_circular(leds, NUM_LEDS, hue_i);
 
   EVERY_N_MILLIS(20) {
     hue_i++;
   }
   
-
   FastLED.show();
+
+  printWebSerialIP();
 }
