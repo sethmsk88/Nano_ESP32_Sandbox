@@ -146,7 +146,7 @@ void loop() {
   
   FastLED.show();
 
-  printWebSerialIP();
+  // printWebSerialIP();
   
   /*
   EVERY_N_SECONDS(1) {
@@ -166,13 +166,18 @@ void loop() {
   }*/
 
   // read the state of the button
-  /*currentButtonState = digitalRead(SLEEP_BTN_PIN);
+  currentButtonState = digitalRead(SLEEP_BTN_PIN);
 
   if (lastButtonState == LOW && currentButtonState == HIGH) {
     WebSerial.println("The state changed from LOW to HIGH");
-  }*/
+  }
 
+  // Save last button state
+  lastButtonState = currentButtonState;
+
+  /*
   if (digitalRead(SLEEP_BTN_PIN) == LOW) {
     goToSleep();
-  }  
+  }
+  */
 }
