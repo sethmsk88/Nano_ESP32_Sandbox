@@ -6,12 +6,16 @@
 #define NUM_RING_LEDS 24
 #define NUM_STRIP_LEDS 23
 #define NUM_LEDS NUM_RING_LEDS
-#define RTC_PIN 12
+#define WAKEUP_PIN A3 // GPIO 8 = D5
+#define SLEEP_BTN_PIN D6
+#define LED_PIN 10  // GPIO 10 = D7
 
 #define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
 #define ms_TO_S_FACTOR 1000  /* Conversion factor for milliseconds to seconds */
 #define TIME_TO_SLEEP  5        /* Time ESP32 will go to sleep (in seconds) */
-#define AWAKE_TIME 15           /* Time to stay awake before going to sleep */ 
+#define AWAKE_TIME 5           /* Time to stay awake before going to sleep */ 
+
+#define BUTTON_PIN_BITMASK 0x200000000 // 2^33 in hex
 
 /*
   The ESP32 has 8KB of SRAM on the RTC part, called RTC fast memory. The data
@@ -21,7 +25,12 @@
 */
 RTC_DATA_ATTR int bootCount = 0;
 
-uint32_t previousMillis = 0;
+uint32_t timerStartTime = 0;
+
+byte lastButtonState; // the previous state of button
+byte currentButtonState; // the current state of button
+byte ledState = LOW;
+
 
 
 CRGB leds[NUM_LEDS];
@@ -48,25 +57,23 @@ void print_wakeup_reason(){
 }
 
 void goToSleep() {
-  Serial.println(F("Going to sleep now"));
-  WebSerial.println(F("Going to sleep now"));
+  Serial.println(F("Going to sleep now. Press the button to wake me up."));
+  WebSerial.println(F("Going to sleep now. Press the button to wake me up."));
   delay(1000);
   WebSerial.flush(); 
   
-  esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
+  // esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
   esp_deep_sleep_start();
 }
 
 void showBootIndicator() {
-  if (bootCount == 0) {
-    Serial.println("Initial boot");
-    digitalWrite(LED_RED, LOW);
-    bootCount = bootCount + 1;
-  }
-  else {
-    Serial.println("Wakeup boot");
-    digitalWrite(LED_GREEN, LOW);
-  }
+  bootCount++;
+  Serial.print("Boot #");
+  Serial.println(bootCount);
+
+  uint8_t ledToTurnOn = bootCount <= 1 ? LED_RED : LED_GREEN;
+  digitalWrite(ledToTurnOn, LOW);
+
   print_wakeup_reason();
 }
 
@@ -91,10 +98,38 @@ void setup() {
   fill_solid(leds, NUM_LEDS, color);
   FastLED.show();
 
-  // setupDeepSleep();
-
-  // setupDeepSleep2();
   showBootIndicator();
+
+  /*
+  First we configure the wake up source
+  We set our ESP32 to wake up for an external trigger.
+  There are two types for ESP32, ext0 and ext1 .
+  ext0 uses RTC_IO to wakeup thus requires RTC peripherals
+  to be on while ext1 uses RTC Controller so doesnt need
+  peripherals to be powered on.
+  Note that using internal pullups/pulldowns also requires
+  RTC peripherals to be turned on.
+  */
+  //esp_sleep_enable_ext0_wakeup(GPIO_NUM_12, HIGH); //1 = High, 0 = Low
+
+  /*
+    Setup button
+  */
+  pinMode(WAKEUP_PIN, INPUT_PULLUP);  // Set button pin to input pullup mode
+  pinMode(SLEEP_BTN_PIN, INPUT_PULLUP);
+
+  // I don't know why HIGH works instead of LOW. LOW does not work!!!!!!!
+  esp_sleep_enable_ext0_wakeup(GPIO_NUM_4, HIGH);  // Configure external wake-up. GPIO_NUM_4 is A3 on Nano ESP32
+
+  Serial.println(digitalRead(WAKEUP_PIN));
+  delay(1000);  // Adding a 1 second delay to debounce the button press
+
+
+  //If you were to use ext1, you would use it like
+  //esp_sleep_enable_ext1_wakeup(BUTTON_PIN_BITMASK,ESP_EXT1_WAKEUP_ANY_HIGH);
+
+
+  // goToSleep();
 }
 
 
@@ -111,13 +146,33 @@ void loop() {
   
   FastLED.show();
 
-  //Serial.println("Loop");
-
   printWebSerialIP();
+  
+  /*
+  EVERY_N_SECONDS(1) {
+    if (digitalRead(WAKEUP_PIN) == LOW) {
+      Serial.println("Button pressed");
+    }
+    else {
+      Serial.println("Button NOT pressed");
+    }
+  }
+  */
 
   // Go to sleep if awake time has elapsed
-  if (millis() - previousMillis >= AWAKE_TIME * ms_TO_S_FACTOR) {
-    previousMillis = millis();
+  /*if (millis() - timerStartTime >= AWAKE_TIME * ms_TO_S_FACTOR) {
+    timerStartTime = millis();
     goToSleep();
-  }
+  }*/
+
+  // read the state of the button
+  /*currentButtonState = digitalRead(SLEEP_BTN_PIN);
+
+  if (lastButtonState == LOW && currentButtonState == HIGH) {
+    WebSerial.println("The state changed from LOW to HIGH");
+  }*/
+
+  if (digitalRead(SLEEP_BTN_PIN) == LOW) {
+    goToSleep();
+  }  
 }
